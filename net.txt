@@ -1,0 +1,191 @@
+IResumeRepository.asp
+
+using System;  
+using System.Collections.Generic;  
+using System.Linq;  
+using System.Text;  
+using System.Threading.Tasks;  
+using System.Web;  
+  
+namespace ResumeMVC.Repository  
+{  
+   public interface IResumeRepository  
+    {  
+        bool AddPersonnalInformation(Person person, HttpPostedFileBase file);  
+        string AddOrUpdateEducation(Education education, int idPer);  
+        int GetIdPerson(string firstName, string lastName);  
+        string AddOrUpdateExperience(WorkExperience workExperience, int idPer);  
+        bool AddSkill(Skill skill, int idPer);  
+        bool AddCertification(Certification certification, int idPer);  
+        bool AddLanguage(Language language, int idPer);  
+        Person GetPersonnalInfo(int idPer);  
+        IQueryable<Education> GetEducationById(int idPer);  
+        IQueryable<Language> GetLanguageById(int idPer);  
+    }  
+} 
+---------------------------------------------------------------------------------------------
+
+ResumeRepository.asp
+
+
+using System;  
+using System.Collections.Generic;  
+using System.Linq;  
+using System.Web;  
+using ResumeMVC.EDMXModel;  
+using System.IO;  
+using System.Data.Entity.Validation;  
+using System.Data.Entity;  
+using AutoMapper.QueryableExtensions;  
+  
+namespace ResumeMVC.Repository  
+{  
+    public class ResumeRepository : IResumeRepository  
+    {  
+        private readonly DBCVEntities _dbContext = new DBCVEntities();  
+  
+        public bool AddCertification(Certification certification, int idPer)  
+        {  
+            try  
+            {  
+                int countRecords = 0;  
+                Person personEntity = _dbContext.People.Find(idPer);  
+  
+                if (personEntity != null && certification != null)  
+                {  
+                    personEntity.Certifications.Add(certification);  
+                    countRecords = _dbContext.SaveChanges();  
+                }  
+  
+                return countRecords > 0 ? true : false;  
+            }  
+            catch (DbEntityValidationException dbEx)  
+            {  
+  
+                throw;  
+            }  
+             
+        }  
+  
+        public bool AddLanguage(Language language, int idPer)  
+        {  
+                int countRecords = 0;  
+                Person personEntity = _dbContext.People.Find(idPer);  
+  
+                if (personEntity != null && language != null)  
+                {  
+                    personEntity.Languages.Add(language);  
+                    countRecords = _dbContext.SaveChanges();  
+                }  
+  
+                return countRecords > 0 ? true : false;  
+        }  
+  
+        public string AddOrUpdateEducation(Education education, int idPer)  
+        {  
+            string msg = string.Empty;  
+  
+            Person personEntity = _dbContext.People.Find(idPer);  
+  
+            if(personEntity != null)  
+            {  
+                if (education.IDEdu > 0)  
+                {  
+                    _dbContext.Entry(education).State = EntityState.Modified;  
+                    _dbContext.SaveChanges();  
+  
+                    msg = "Education entity has been updated successfully";  
+                }  
+                else  
+                {  
+                    personEntity.Educations.Add(education);  
+                    _dbContext.SaveChanges();  
+  
+                    msg = "Education entity has been Added successfully";  
+                }  
+            }  
+  
+            return msg;  
+        }  
+  
+        
+  
+       
+        public IQueryable<Certification> GetCertificationsById(int idPer)  
+        {  
+            var certificationList = _dbContext.Certifications.Where(w => w.IdPers == idPer);  
+            return certificationList;  
+        }  
+  
+        public IQueryable<Education> GetEducationById(int idPer)  
+        {  
+            var educationList = _dbContext.Educations.Where(e => e.IdPers == idPer);  
+            return educationList;  
+        }  
+  
+        public int GetIdPerson(string firstName, string lastName)  
+        {  
+            int idSelected = _dbContext.People.Where(p => p.FirstName.ToLower().Equals(firstName.ToLower()))  
+                                              .Where(p => p.LastName.ToLower().Equals(lastName.ToLower()))  
+                                              .Select(p => p.IDPers).FirstOrDefault();  
+  
+            return idSelected;  
+        }  
+  
+        public IQueryable<Language> GetLanguageById(int idPer)  
+        {  
+            var languageList = _dbContext.Languages.Where(w => w.IdPers == idPer);  
+            return languageList;  
+        }  
+  
+        public Person GetPersonnalInfo(int idPer)  
+        {  
+            return _dbContext.People.Find(idPer);  
+        }  
+  
+        
+  
+        public IQueryable<WorkExperience> GetWorkExperienceById(int idPer)  
+        {  
+            var workExperienceList = _dbContext.WorkExperiences.Where(w => w.IDPers == idPer);  
+            return workExperienceList;  
+        }  
+  
+        private byte[] ConvertToBytes(HttpPostedFileBase image)  
+        {  
+            byte[] imageBytes = null;  
+            BinaryReader reader = new BinaryReader(image.InputStream);  
+            imageBytes = reader.ReadBytes((int)image.ContentLength);  
+            return imageBytes;  
+        }  
+  
+    }  
+}  
+
+
+--------------------------------------------------------------------------------------------------------
+
+ResumeController.asp
+
+
+public ActionResult PersonnalInformtion(PersonVM model)  
+{  
+     
+    List<SelectListItem> educationalLevel = new List<SelectListItem>()  
+    {  
+        new SelectListItem { Text = "Hight School", Value = "Hight School", Selected = true},  
+        new SelectListItem { Text = "Diploma", Value = "Diploma"},  
+        new SelectListItem { Text = "Bachelor's degree", Value = "Bachelor's degree"},  
+        new SelectListItem { Text = "Master's degree", Value = "Master's degree"},  
+        new SelectListItem { Text = "Doctorate", Value = "Doctorate"},  
+    };  
+  
+    model.ListNationality = nationality;  
+    model.ListEducationalLevel = educationalLevel;  
+  
+    return View(model);  
+}  
+  
+
+
+
